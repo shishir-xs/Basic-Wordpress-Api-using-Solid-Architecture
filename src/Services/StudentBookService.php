@@ -4,51 +4,21 @@ namespace SolidApi\Services;
 
 use SolidApi\Abstracts\AbstractService;
 use SolidApi\Repositories\StudentBookRepository;
+use SolidApi\Validators\StudentBookValidator;
 
 class StudentBookService extends AbstractService {
     
+    protected $validator;
+
     /**
-     * Validate data before processing
+     * Constructor with dependency injection
      * 
-     * @param array $data
-     * @return array
-     * @throws \Exception
+     * @param StudentBookRepository $repository
+     * @param StudentBookValidator|null $validator
      */
-    protected function validate(array $data): array {
-        $validated = [];
-
-        // Validate student_name
-        if (isset($data['student_name'])) {
-            if (empty(trim($data['student_name']))) {
-                throw new \Exception('Student name is required');
-            }
-            $validated['student_name'] = sanitize_text_field($data['student_name']);
-        }
-
-        // Validate book_title
-        if (isset($data['book_title'])) {
-            if (empty(trim($data['book_title']))) {
-                throw new \Exception('Book title is required');
-            }
-            $validated['book_title'] = sanitize_text_field($data['book_title']);
-        }
-
-        // Validate isbn (optional)
-        if (isset($data['isbn'])) {
-            $validated['isbn'] = sanitize_text_field($data['isbn']);
-        }
-
-        // Validate borrowed_date (optional)
-        if (isset($data['borrowed_date'])) {
-            $validated['borrowed_date'] = sanitize_text_field($data['borrowed_date']);
-        }
-
-        // Validate return_date (optional)
-        if (isset($data['return_date'])) {
-            $validated['return_date'] = sanitize_text_field($data['return_date']);
-        }
-
-        return $validated;
+    public function __construct(StudentBookRepository $repository, ?StudentBookValidator $validator = null) {
+        parent::__construct($repository);
+        $this->validator = $validator ?? new StudentBookValidator();
     }
 
     /**
@@ -56,13 +26,49 @@ class StudentBookService extends AbstractService {
      * 
      * @param array $data
      * @return int
+     * @throws \Exception
      */
     public function create(array $data) {
-        // Ensure required fields for creation
-        if (!isset($data['student_name']) || !isset($data['book_title'])) {
-            throw new \Exception('Student name and book title are required');
+        // Validate using dedicated validator
+        $validatedData = $this->validator->validateCreate($data);
+        
+        // Additional business logic validation (date range check)
+        if (!$this->validator->validateDateRange($validatedData)) {
+            throw new \Exception(implode(', ', $this->validator->getErrors()));
         }
 
-        return parent::create($data);
+        return $this->repository->create($validatedData);
+    }
+
+    /**
+     * Update an existing record
+     * 
+     * @param int $id
+     * @param array $data
+     * @return bool
+     * @throws \Exception
+     */
+    public function update(int $id, array $data): bool {
+        // Validate using dedicated validator
+        $validatedData = $this->validator->validateUpdate($data);
+        
+        // Additional business logic validation (date range check)
+        if (!$this->validator->validateDateRange($validatedData)) {
+            throw new \Exception(implode(', ', $this->validator->getErrors()));
+        }
+
+        return $this->repository->update($id, $validatedData);
+    }
+
+    /**
+     * Validate data before processing (for compatibility with AbstractService)
+     * This method is now delegated to the validator
+     * 
+     * @param array $data
+     * @return array
+     * @throws \Exception
+     */
+    protected function validate(array $data): array {
+        return $this->validator->validate($data);
     }
 }

@@ -45,6 +45,7 @@ use SolidApi\Database\Migration;
 use SolidApi\Repositories\StudentBookRepository;
 use SolidApi\Services\StudentBookService;
 use SolidApi\Controllers\StudentBookController;
+use SolidApi\Validators\StudentBookValidator;
 
 /**
  * Plugin activation hook
@@ -65,9 +66,10 @@ register_deactivation_hook(__FILE__, function() {
  * Initialize the plugin
  */
 add_action('rest_api_init', function() {
-    // Dependency Injection - Repository -> Service -> Controller
+    // Dependency Injection - Validator -> Repository -> Service -> Controller
+    $validator = new StudentBookValidator();
     $repository = new StudentBookRepository();
-    $service = new StudentBookService($repository);
+    $service = new StudentBookService($repository, $validator);
     $controller = new StudentBookController($service);
     
     // Register routes
